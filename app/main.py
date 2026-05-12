@@ -15,3 +15,6 @@ app.include_router(
     prefix="/resume",
     tags=["Resume Analyzer"]
 )
+@app.get("/")
+def home():
+    return {"message": "Advance ATS Analyzer"}
