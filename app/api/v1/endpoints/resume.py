@@ -4,9 +4,15 @@ import re
 from pydantic import BaseModel
 from openai import OpenAI
 import os
+from app.schemas.resume import ResumeCreate
+from sqlalchemy.orm import Session
+from fastapi import Depends
+
+from app.database.db import get_db
+from app.models.resume import Resume
 router = APIRouter()
-client = OpenAI()
-api_key = os.getenv("OPENAI_API_KEY")
+client = OpenAI(api_key = os.getenv("OPENAI_API_KEY"))
+
 
 # =========================
 # STOPWORDS
@@ -454,4 +460,75 @@ def ai_rewrite(data: ResumeRequest):
 
     return {
         "rewritten_resume": response.choices[0].message.content
+    }
+@router.post("/save")
+def save_resume(
+    data: ResumeCreate,
+    db: Session = Depends(get_db)
+):
+
+    resume = Resume(
+        original_resume=data.original_resume,
+        ats_score=data.ats_score,
+        missing_skills=data.missing_skills,
+        job_description=data.job_description
+    )
+
+    db.add(resume)
+    db.commit()
+    db.refresh(resume)
+
+    return {
+        "message": "Resume Saved",
+        "resume_id": resume.id
+    }
+
+ 👇
+@router.post("/rewrite/{resume_id}")
+def rewrite_resume(
+    resume_id: int,
+    db: Session = Depends(get_db)
+):
+    resume = db.query(Resume).filter(
+        Resume.id == resume_id
+    ).first()
+
+    if not resume:
+        return {"error": "Resume not found"}
+
+    prompt = f"""
+    Rewrite this resume professionally.
+
+    ATS Score: {resume.ats_score}
+
+    Missing Skills:
+    {resume.missing_skills}
+
+    Resume:
+    {resume.original_resume}
+
+    Improve ATS score.
+    Add strong action verbs.
+    Improve formatting.
+    """
+
+    response = client.chat.completions.create(
+        model="gpt-4.1-mini",
+        messages=[
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ]
+    )
+
+    rewritten = response.choices[0].message.content
+
+    resume.rewritten_resume = rewritten
+
+    db.commit()
+
+    return {
+        "resume_id": resume.id,
+        "rewritten_resume": rewritten
     }
