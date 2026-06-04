@@ -1,5 +1,4 @@
-from sqlalchemy import Column, Integer, Text, Float, ForeignKey, DateTime
-from datetime import datetime
+from sqlalchemy import Column, Integer, String, Text
 from app.database.db import Base
 
 class Resume(Base):
@@ -7,16 +6,17 @@ class Resume(Base):
 
     id = Column(Integer, primary_key=True, index=True)
 
-    user_id = Column(Integer, ForeignKey("users.id"))
+    name = Column(String)
+    email = Column(String)
+    phone = Column(String)
+    linkedin = Column(String)
 
-    original_resume = Column(Text, nullable=False)
+    original_resume = Column(Text)
 
-    rewritten_resume = Column(Text)
-
-    ats_score = Column(Float)
+    ats_score = Column(Integer)
 
     missing_skills = Column(Text)
 
-    job_description = Column(Text)
+    rewritten_resume = Column(Text)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    pdf_url = Column(String)

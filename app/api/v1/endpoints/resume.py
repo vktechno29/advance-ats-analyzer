@@ -4,12 +4,16 @@ import re
 from pydantic import BaseModel
 from openai import OpenAI
 import os
-from app.schemas.resume import ResumeCreate
 from sqlalchemy.orm import Session
 from fastapi import Depends
 
+from app.core.extractor import extract_name,extract_email,extract_phone,extract_linkedin
 from app.database.db import get_db
 from app.models.resume import Resume
+from app.schemas.resume import ResumeCreate
+from app.core.pdf_generator import generate_resume_pdf
+from fastapi.responses import FileResponse
+
 router = APIRouter()
 client = OpenAI(api_key = os.getenv("OPENAI_API_KEY"))
 
@@ -299,7 +303,8 @@ async def analyze_resume(
 
     file: UploadFile = File(...),
 
-    job_description: str = Form(...)
+    job_description: str = Form(...),
+    db: Session = Depends(get_db)
 
 ):
 
@@ -308,6 +313,13 @@ async def analyze_resume(
     resume_raw = extract_text(file.file)
 
     resume_text = clean_text(resume_raw)
+    name = extract_name(resume_text)
+
+    email = extract_email(resume_text)
+
+    phone = extract_phone(resume_text)
+
+    linkedin = extract_linkedin(resume_text)
 
     jd_text = clean_text(job_description)
 
@@ -398,10 +410,27 @@ async def analyze_resume(
     # Limit max score
 
     score = min(score, 95)
+    resume = Resume(
+        name=name,
+        email=email,
+        phone=phone,
+        linkedin=linkedin,
+        original_resume=resume_text,
+        job_description=job_description,
+        ats_score=int(score),
+        missing_skills=", ".join(missing)
+    )
+
+    db.add(resume)
+
+    db.commit()
+
+    db.refresh(resume)
 
     # FINAL RESPONSE
 
     return {
+        "resume_id": resume.id,
 
         "jd_domain": jd_domain,
 
@@ -469,17 +498,19 @@ def save_resume(
 
     resume = Resume(
         original_resume=data.original_resume,
+        job_description=data.job_description,
         ats_score=data.ats_score,
-        missing_skills=data.missing_skills,
-        job_description=data.job_description
+        missing_skills=data.missing_skills
     )
 
     db.add(resume)
+
     db.commit()
+
     db.refresh(resume)
 
     return {
-        "message": "Resume Saved",
+        "message": "Resume saved",
         "resume_id": resume.id
     }
 
@@ -532,3 +563,32 @@ def rewrite_resume(
         "resume_id": resume.id,
         "rewritten_resume": rewritten
     }
+@router.get("/download/{resume_id}")
+def download_resume(
+    resume_id: int,
+    db: Session = Depends(get_db)
+):
+
+    resume = db.query(Resume).filter(
+        Resume.id == resume_id
+    ).first()
+
+    if not resume:
+        return {"error": "Resume not found"}
+
+    filename = f"resume_{resume.id}.pdf"
+
+    generate_resume_pdf(
+        filename=filename,
+        name=resume.name,
+        email=resume.email,
+        phone=resume.phone,
+        linkedin=resume.linkedin,
+        content=resume.rewritten_resume
+    )
+
+    return FileResponse(
+        path=filename,
+        filename=filename,
+        media_type="application/pdf"
+    )

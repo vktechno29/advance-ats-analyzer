@@ -47,6 +47,7 @@ pypdfium2==5.7.1
 python-jose==3.5.0
 python-multipart==0.0.26
 PyYAML==6.0.3
+reportlab
 regex==2026.4.4
 rich==15.0.0
 rsa==4.9.1
