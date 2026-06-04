@@ -39,6 +39,9 @@ def signup(
             status_code=400,
             detail="Email already exists"
         )
+    print("EMAIL :",user.email)
+    print("PASSWORD :",user.password)
+    print("Length :",len(user.password))
 
     new_user = User(
         name=user.name,

@@ -6,7 +6,7 @@ SECRET_KEY = "SUPER_SECRET_KEY"
 ALGORITHM = "HS256"
 
 pwd_context = CryptContext(
-    schemes=["bcrypt"],
+    schemes=["pbkdf2_sha256"],
     deprecated="auto"
 )
 
