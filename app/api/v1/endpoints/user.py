@@ -1,0 +1,10 @@
+from fastapi import APIRouter
+
+router = APIRouter()
+
+@router.get("/profile")
+def get_profile():
+
+    return {
+        "message": "Profile API working"
+    }

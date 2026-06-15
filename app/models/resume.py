@@ -21,3 +21,4 @@ class Resume(Base):
     rewritten_resume = Column(Text)
 
     pdf_url = Column(String)
+    template_id = Column(Integer,default=1)

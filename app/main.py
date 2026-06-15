@@ -4,7 +4,8 @@ from app.api.v1.endpoints.auth import router as auth_router
 from app.models.user import User
 from app.models.resume import Resume
 from app.database.db import Base,engine
-
+from app.api.v1.endpoints import user
+from app.api.v1.endpoints.template import router as template_router
 app = FastAPI(title="Advanced ATS Analyzer")
 Base.metadata.create_all(bind=engine)
 
@@ -19,6 +20,8 @@ app.include_router(
     prefix="/resume",
     tags=["Resume Analyzer"]
 )
+app.include_router(user.router, prefix="/user", tags=["User"])
 @app.get("/")
 def home():
     return {"message": "Advance ATS Analyzer"}
+app.include_router(template_router, prefix="/template", tags=["Template"])
