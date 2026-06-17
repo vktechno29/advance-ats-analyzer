@@ -12,6 +12,8 @@ from app.api.v1.endpoints import dashboard
 from app.api.v1.endpoints import usage
 from app.api.v1.endpoints import admin
 from fastapi.staticfiles import StaticFiles
+from app.models.contact import Contact
+from app.api.v1.endpoints.contact import router as contact_router
 app = FastAPI(title="Advanced ATS Analyzer")
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 Base.metadata.create_all(bind=engine)
@@ -40,3 +42,4 @@ app.include_router(
 )
 app.include_router(usage.router, prefix="/usage", tags=["Usage"])
 app.include_router(admin.router, prefix="/admin", tags=["Admin"])
+app.include_router(contact_router, prefix="/contact", tags=["Contact"])
