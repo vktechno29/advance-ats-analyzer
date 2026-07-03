@@ -15,6 +15,7 @@ from app.core.pdf_generator import generate_resume_pdf
 from fastapi.responses import FileResponse
 from fastapi import APIRouter,Depends,HTTPException
 from app.models.subscription import Subscription
+from app.models.activity import Activity
 
 import json
 
@@ -469,6 +470,15 @@ async def analyze_resume(
     db.commit()
 
     db.refresh(resume)
+    activity = Activity(
+        user_id=user_id,
+        type="ats_scan",
+        title=f"ATS Scan Completed ({int(score)}%)",
+        description=f"Resume analyzed with ATS score {int(score)}%"
+    )
+
+    db.add(activity)
+    db.commit()
 
     # FINAL RESPONSE
 
@@ -601,6 +611,15 @@ Rules:
 
     db.commit()
     db.refresh(resume)
+    activity = Activity(
+        user_id=resume.user_id,
+        type="resume_updated",
+        title="AI Resume Rewritten",
+        description="Resume rewritten using AI"
+    )
+
+    db.add(activity)
+    db.commit()
 
     return {
         "resume_id": resume.id,
@@ -618,7 +637,14 @@ def save_resume(
         original_resume=data.original_resume,
         job_description=data.job_description,
         ats_score=data.ats_score,
-        missing_skills=data.missing_skills
+        missing_skills=data.missing_skills,
+        user_id=data.user_id,
+        name=data.name,
+        email=data.email,
+        phone=data.phone,
+        linkedin=data.linkedin,
+        template_id=data.template_id
+
     )
 
     db.add(resume)
@@ -626,6 +652,15 @@ def save_resume(
     db.commit()
 
     db.refresh(resume)
+    activity = Activity(
+        user_id=resume.user_id,
+        type="resume_created",
+        title="Resume Created",
+        description="New resume saved successfully"
+    )
+
+    db.add(activity)
+    db.commit()
 
     return {
         "message": "Resume saved",
@@ -641,7 +676,8 @@ def download_resume(
 ):
 
     resume = db.query(Resume).filter(
-        Resume.id == resume_id
+        Resume.id == resume_id,
+        Resume.is_deleted==False
     ).first()
 
     if not resume:
@@ -698,6 +734,21 @@ def download_resume(
         linkedin=resume.linkedin,
         content=pdf_text
     )
+    resume.pdf_url = f"/resume/download/{resume.id}"
+    resume.is_generated = True
+    resume.download_count += 1
+
+    activity = Activity(
+        user_id=resume.user_id,
+        type="resume_download",
+        title="Resume PDF Downloaded",
+        description="Downloaded generated resume PDF"
+    )
+
+    db.add(activity)
+    db.commit()
+    db.refresh(activity)
+    db.refresh(resume)
 
     return FileResponse(
         path=filename,
@@ -710,7 +761,7 @@ def get_all_resumes(
     db: Session = Depends(get_db)
 ):
 
-    resumes = db.query(Resume).all()
+    resumes = db.query(Resume).filter(Resume.is_deleted== False).all()
 
     return [
         {
@@ -729,7 +780,8 @@ def delete_resume(
 ):
 
     resume = db.query(Resume).filter(
-        Resume.id == resume_id
+        Resume.id == resume_id,
+        Resume.is_deleted==False
     ).first()
 
     if not resume:
@@ -738,9 +790,22 @@ def delete_resume(
             detail="Resume not found"
         )
 
-    db.delete(resume)
+    # Soft Delete
+    resume.is_deleted = True
+
+    # Activity Log
+    activity = Activity(
+        user_id=resume.user_id,
+        type="resume_deleted",
+        title="Resume Deleted",
+        description="User deleted a resume"
+    )
+
+    db.add(activity)
 
     db.commit()
+
+    db.refresh(resume)
 
     return {
         "message": "Resume deleted successfully"
@@ -752,7 +817,8 @@ def get_resume_report(
 ):
 
     resume = db.query(Resume).filter(
-        Resume.id == resume_id
+        Resume.id == resume_id,
+        Resume.is_deleted==False
     ).first()
 
     if not resume:
@@ -774,7 +840,8 @@ def get_resume(
     db: Session = Depends(get_db)
 ):
     resume = db.query(Resume).filter(
-        Resume.id == resume_id
+        Resume.id == resume_id,
+        Resume.is_deleted==False
     ).first()
 
     if not resume:
@@ -795,4 +862,51 @@ def get_resume(
         "rewritten_resume": resume.rewritten_resume,
         "pdf_url": resume.pdf_url,
         "template_id": resume.template_id
+    }
+@router.get("/user/{user_id}")
+def get_resumes_by_user(
+    user_id: int,
+    db: Session = Depends(get_db)
+):
+
+    resumes = (
+        db.query(Resume)
+        .filter(
+            Resume.user_id == user_id,
+            Resume.is_deleted == False
+        )
+        .order_by(Resume.updated_at.desc())
+        .all()
+    )
+
+    return {
+        "success": True,
+        "message": "Resumes fetched successfully",
+        "count": len(resumes),
+        "data": [
+            {
+                "id": resume.id,
+                "name": resume.name,
+                "email": resume.email,
+                "phone": resume.phone,
+                "linkedin": resume.linkedin,
+
+                "ats_score": resume.ats_score,
+
+                "job_description": resume.job_description,
+
+                "missing_skills": resume.missing_skills,
+
+                "template_id": resume.template_id,
+
+                "pdf_url": resume.pdf_url,
+
+                "is_generated": resume.is_generated,
+
+                "created_at": resume.created_at,
+
+                "updated_at": resume.updated_at
+            }
+            for resume in resumes
+        ]
     }

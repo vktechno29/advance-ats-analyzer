@@ -14,6 +14,7 @@ from app.api.v1.endpoints import admin
 from fastapi.staticfiles import StaticFiles
 from app.models.contact import Contact
 from app.api.v1.endpoints.contact import router as contact_router
+from app.models.activity import Activity
 app = FastAPI(title="Advanced ATS Analyzer")
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 Base.metadata.create_all(bind=engine)
