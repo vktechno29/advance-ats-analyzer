@@ -29,13 +29,19 @@ SmartPrep AI Team
 
     message.attach(MIMEText(body, "plain"))
 
-    with smtplib.SMTP_SSL(
-            settings.EMAIL_HOST,
-            settings.EMAIL_PORT,
-            timeout=30
-    ) as server:
-        server.login(
-            settings.EMAIL_USERNAME,
-            settings.EMAIL_PASSWORD
-        )
-        server.send_message(message)
+    server = smtplib.SMTP(
+        settings.EMAIL_HOST,
+        587,
+        timeout=30
+    )
+
+    server.starttls()
+
+    server.login(
+        settings.EMAIL_USERNAME,
+        settings.EMAIL_PASSWORD
+    )
+
+    server.send_message(message)
+
+    server.quit()
