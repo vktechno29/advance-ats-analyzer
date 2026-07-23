@@ -211,12 +211,13 @@ def forgot_password(
     data: ForgotPasswordRequest,
     db: Session = Depends(get_db)
 ):
+    print("Step 1")
 
-    user = (
-        db.query(User)
-        .filter(User.email == data.email)
-        .first()
-    )
+    user = db.query(User).filter(
+        User.email == data.email
+    ).first()
+
+    print("Step 2")
 
     if not user:
         raise HTTPException(
@@ -226,9 +227,13 @@ def forgot_password(
 
     otp = str(random.randint(100000, 999999))
 
+    print("Step 3")
+
     db.query(EmailOTP).filter(
         EmailOTP.email == data.email
     ).delete()
+
+    print("Step 4")
 
     otp_record = EmailOTP(
         user_id=user.id,
@@ -237,17 +242,20 @@ def forgot_password(
         expires_at=datetime.now(timezone.utc) + timedelta(minutes=10)
     )
 
+    print("Step 5")
+
     db.add(otp_record)
     db.commit()
 
-    send_otp_email(
-        user.email,
-        otp
-    )
+    print("Step 6")
+
+    send_otp_email(user.email, otp)
+
+    print("Step 7")
 
     return {
         "success": True,
-        "message": "OTP sent to your email."
+        "message": "OTP sent successfully."
     }
 @router.post("/reset-password")
 def reset_password(
