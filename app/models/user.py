@@ -16,3 +16,4 @@ class User(Base):
 
     resumes = relationship("Resume", back_populates="user",cascade="all, delete-orphan")
     activities = relationship("Activity", back_populates="user",cascade="all, delete-orphan")
+    email_otps = relationship("EmailOTP",back_populates="user",cascade="all, delete-orphan")
