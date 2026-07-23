@@ -15,6 +15,7 @@ from fastapi.staticfiles import StaticFiles
 from app.models.contact import Contact
 from app.api.v1.endpoints.contact import router as contact_router
 from app.models.activity import Activity
+from app.models.email_otp import EmailOTP
 from app.api.v1.endpoints.payment import router as payment_router
 app = FastAPI(title="Advanced ATS Analyzer")
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
