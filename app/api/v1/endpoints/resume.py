@@ -638,12 +638,7 @@ def save_resume(
         job_description=data.job_description,
         ats_score=data.ats_score,
         missing_skills=data.missing_skills,
-        user_id=data.user_id,
-        name=data.name,
-        email=data.email,
-        phone=data.phone,
-        linkedin=data.linkedin,
-        template_id=data.template_id
+
 
     )
 
