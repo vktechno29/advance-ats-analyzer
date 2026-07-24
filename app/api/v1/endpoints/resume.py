@@ -17,6 +17,7 @@ from fastapi import APIRouter,Depends,HTTPException
 from app.models.subscription import Subscription
 from app.models.activity import Activity
 
+
 import json
 
 router = APIRouter()
@@ -825,10 +826,14 @@ def get_resume(
     resume_id: int,
     db: Session = Depends(get_db)
 ):
-    resume = db.query(Resume).filter(
-        Resume.id == resume_id,
-        Resume.is_deleted==False
-    ).first()
+    resume = (
+        db.query(Resume)
+        .filter(
+            Resume.id == resume_id,
+            Resume.is_deleted == False
+        )
+        .first()
+    )
 
     if not resume:
         raise HTTPException(
@@ -836,18 +841,103 @@ def get_resume(
             detail="Resume not found"
         )
 
+    # Parse AI rewritten resume
+    resume_data = {}
+
+    if resume.rewritten_resume:
+        try:
+            resume_data = json.loads(resume.rewritten_resume)
+        except Exception:
+            resume_data = {}
+
     return {
         "id": resume.id,
-        "name": resume.name,
-        "email": resume.email,
-        "phone": resume.phone,
-        "linkedin": resume.linkedin,
+
+        "personalInfo": {
+            "fullName": resume.name,
+            "title": "",
+            "city": "",
+            "phone": resume.phone,
+            "email": resume.email,
+            "linkedin": resume.linkedin
+        },
+
+        "summary": resume_data.get(
+            "professional_summary",
+            ""
+        ),
+
+        "skills": resume_data.get(
+            "technical_skills",
+            []
+        ),
+
+        "experience": [
+            {
+                "position": exp.get("title", ""),
+                "company": exp.get("company", ""),
+                "startDate": exp.get("duration", ""),
+                "endDate": "",
+                "responsibilities": exp.get(
+                    "responsibilities",
+                    []
+                )
+            }
+            for exp in resume_data.get("experience", [])
+        ],
+
+        "projects": [
+            {
+                "name": project.get("name", ""),
+                "description": project.get("description", ""),
+                "highlights": project.get(
+                    "technologies",
+                    []
+                )
+            }
+            for project in resume_data.get("projects", [])
+        ],
+
+        "education": [
+            {
+                "degree": edu.get("degree", ""),
+                "institute": edu.get(
+                    "institution",
+                    ""
+                ),
+                "startDate": "",
+                "endDate": edu.get("year", ""),
+                "details": []
+            }
+            for edu in resume_data.get("education", [])
+        ],
+
+        "languages": resume_data.get(
+            "languages",
+            []
+        ),
+
+        "certifications": [
+            cert.get("name", "")
+            for cert in resume_data.get(
+                "certifications",
+                []
+            )
+        ],
+
+        "awards": [
+            activity.get("name", "")
+            for activity in resume_data.get(
+                "activities",
+                []
+            )
+        ],
+
         "ats_score": resume.ats_score,
-        "job_description": resume.job_description,
-        "missing_skills": resume.missing_skills,
-        "rewritten_resume": resume.rewritten_resume,
-        "pdf_url": resume.pdf_url,
-        "template_id": resume.template_id
+
+        "template_id": resume.template_id,
+
+        "pdf_url": resume.pdf_url
     }
 @router.get("/user/{user_id}")
 def get_resumes_by_user(
