@@ -647,15 +647,6 @@ def save_resume(
     db.commit()
 
     db.refresh(resume)
-    activity = Activity(
-        user_id=resume.user_id,
-        type="resume_created",
-        title="Resume Created",
-        description="New resume saved successfully"
-    )
-
-    db.add(activity)
-    db.commit()
 
     return {
         "message": "Resume saved",
